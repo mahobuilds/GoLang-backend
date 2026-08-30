@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"math"
+	"net/http"
 	"strconv"
 )
 
@@ -35,8 +35,6 @@ func createDeviceHandler(store *Store) http.HandlerFunc {
 	}
 }
 
-
-
 func createDeviceReading(store *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		store.mx.Lock()
@@ -65,8 +63,6 @@ func createDeviceReading(store *Store) http.HandlerFunc {
 		json.NewEncoder(w).Encode(reading)
 	}
 }
-
-
 
 func getDeviceReading(store *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +116,33 @@ func getDeviceReading(store *Store) http.HandlerFunc {
 	}
 }
 
+func getAllDevices(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var allDevices []Device
 
+		for _, device := range store.devices {
+			allDevices = append(allDevices, device)
+		}
+		json.NewEncoder(w).Encode(allDevices)
+	}
+}
+
+func getDeviceData(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		id := r.PathValue("id")
+
+		_, exists := store.devices[id]
+		if !exists {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+			return
+		}
+
+		json.NewEncoder(w).Encode(store.devices[id])
+
+	}
+}
 
 func getDeviceStats(store *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -158,5 +180,94 @@ func getDeviceStats(store *Store) http.HandlerFunc {
 	}
 }
 
+func replaceDevice(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 
+		store.mx.Lock()
+		defer store.mx.Unlock()
 
+		var d Device
+
+		err := json.NewDecoder(r.Body).Decode(&d)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintln(w, "bad request:", err)
+			return
+		}
+
+		_, exists := store.devices[d.ID]
+		if exists {
+			device := store.devices[d.ID]
+
+			device.ID = d.ID
+			device.Name = d.Name
+			device.Type = d.Type
+
+			store.devices[d.ID] = device
+		}
+
+		store.devices[d.ID] = d
+		json.NewEncoder(w).Encode(d)
+	}
+}
+
+func updateDeviceData(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		id := r.PathValue("id")
+
+		store.mx.Lock()
+		defer store.mx.Unlock()
+
+		_, exists := store.devices[id]
+		if !exists {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+			return
+		}
+
+		var patch DevicePatch
+
+		err := json.NewDecoder(r.Body).Decode(&patch)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintln(w, "bad request:", err)
+			return
+		}
+
+		device := store.devices[id]
+
+		if patch.Name != nil {
+			device.Name = *patch.Name
+		}
+
+		if patch.Type != nil {
+			device.Type = *patch.Type
+		}
+
+		store.devices[id] = device
+		json.NewEncoder(w).Encode(device)
+	}
+}
+
+func deleteDevice(store *Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+
+		store.mx.RLock()
+		defer store.mx.RUnlock()
+
+		_, exists := store.devices[id]
+		if !exists {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+			return
+		}
+
+		delete(store.devices, id)
+		delete(store.readings, id)
+
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "request succeeded")
+	}
+}

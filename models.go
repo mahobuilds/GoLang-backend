@@ -10,3 +10,8 @@ type Reading struct {
 	Value     float64 `json:"value"`
 	Timestamp float64 `json:"timestamp"`
 }
+
+type DevicePatch struct {
+	Name *string `json:"name"`
+	Type *string `json:"type"`
+}
