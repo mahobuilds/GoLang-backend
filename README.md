@@ -28,106 +28,27 @@ The server starts and listens on port `8080`.
 
 ## Project Structure
 
-The program is small enough that it's structured as a single `main.go` file. In a production setting, separating this into distinct packages (e.g. handlers, storage, models) would be preferred for scalability, testability, and reusability, but for a project of this scope, a single file keeps the logic easy to follow.
+For scalability reasons, the project has been seperated into multiple files. Including handlers.go, modles.go, stats.go, and store.go.
 
-## API Usage Examples
+### 1. main.go
 
-All examples use PowerShell's `Invoke-WebRequest`.
+This is our main file. It is responsible for the starting of the server and simple routing.
 
-### 1. Create a device
+### 2. handlers.go
 
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices -Method POST -Body '{"id":"device-1","name":"Living Room Sensor","type":"temperature"}' -ContentType "application/json"
-```
+This file is reposnible for the handlers.
 
-**Expected response (200):**
+### 3. modles.go
 
-```json
-{ "id": "device-1", "name": "Living Room Sensor", "type": "temperature" }
-```
+This file is responsible for the data structres.
 
-**Duplicate device (409 Conflict):**
+### 4. stats.go
 
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices -Method POST -Body '{"id":"device-1","name":"Duplicate","type":"temperature"}' -ContentType "application/json"
-```
+This file contains the function to calculate the status of a device's readings.
 
-**Malformed JSON (400 Bad Request):**
+### 5. store.go
 
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices -Method POST -Body 'not valid json' -ContentType "application/json"
-```
-
-### 2. Add a reading to a device
-
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices/device-1/readings -Method POST -Body '{"value":22.5,"timestamp":1755600000}' -ContentType "application/json"
-```
-
-**Expected response (200):**
-
-```json
-{ "value": 22.5, "timestamp": 1755600000 }
-```
-
-**Nonexistent device (404 Not Found):**
-
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices/nonexistent-id/readings -Method POST -Body '{"value":22.5,"timestamp":1755600000}' -ContentType "application/json"
-```
-
-### 3. List a device's readings
-
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices/device-1/readings -Method GET
-```
-
-**Expected response (200):**
-
-```json
-[
-  { "value": 22.5, "timestamp": 1755600000 },
-  { "value": 24.1, "timestamp": 1755603600 }
-]
-```
-
-**With time range filtering:**
-
-```powershell
-Invoke-WebRequest -Uri "http://localhost:8080/devices/device-1/readings?from=1755600000&to=1755601000" -Method GET
-```
-
-**Nonexistent device (404 Not Found):**
-
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices/nonexistent-id/readings -Method GET
-```
-
-### 4. Get stats for a device
-
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices/device-1/stats -Method GET
-```
-
-**Expected response (200):**
-
-```json
-{ "min": 22.5, "max": 24.1, "avg": 23.3 }
-```
-
-**Device with no readings yet (404 Not Found):**
-
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices/device-2/stats -Method GET
-```
-
-_(See [Design Decisions] below for why this returns 404 rather than `{"min":0,"max":0,"avg":0}`.)_
-
-**Nonexistent device (404 Not Found):**
-
-```powershell
-Invoke-WebRequest -Uri http://localhost:8080/devices/nonexistent-id/stats -Method GET
-```
+This file contains the Store structre, which has all current data structures connected under it for connectivity purposes
 
 ## Design Decisions
 
