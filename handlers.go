@@ -14,6 +14,13 @@ func createDeviceHandler(store *Store) http.HandlerFunc {
 		store.mx.Lock()
 		defer store.mx.Unlock()
 
+		contentType := r.Header.Get("Content-Type")
+		if contentType != "application/json" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintln(w, "Mismatch of content type")
+			return
+		}
+
 		var d Device
 		err := json.NewDecoder(r.Body).Decode(&d)
 		if err != nil {
@@ -39,6 +46,13 @@ func createDeviceReading(store *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		store.mx.Lock()
 		defer store.mx.Unlock()
+
+		contentType := r.Header.Get("Content-Type")
+		if contentType != "application/json" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintln(w, "Mismatch of content type")
+			return
+		}
 
 		var reading Reading
 
@@ -186,6 +200,13 @@ func replaceDevice(store *Store) http.HandlerFunc {
 		store.mx.Lock()
 		defer store.mx.Unlock()
 
+		contentType := r.Header.Get("Content-Type")
+		if contentType != "application/json" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintln(w, "Mismatch of content type")
+			return
+		}
+
 		var d Device
 
 		err := json.NewDecoder(r.Body).Decode(&d)
@@ -218,6 +239,13 @@ func updateDeviceData(store *Store) http.HandlerFunc {
 
 		store.mx.Lock()
 		defer store.mx.Unlock()
+
+		contentType := r.Header.Get("Content-Type")
+		if contentType != "application/json" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintln(w, "Mismatch of content type")
+			return
+		}
 
 		_, exists := store.devices[id]
 		if !exists {
