@@ -21,7 +21,7 @@ The program uses built-in, in-memory storage (no external database). It exposes 
 ## How to Run
 
 ```bash
-go run main.go
+go run .
 ```
 
 The server starts and listens on port `8080`.
