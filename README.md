@@ -58,7 +58,7 @@ If a device exists but has no readings yet, `GET /devices/{id}/stats` returns a 
 
 ### Storage: separate maps for devices and readings
 
-Devices are stored as `map[string]Device`, and readings are stored separately as `map[string][]Reading`, both keyed by device ID. Readings are not embedded directly inside `Device` because a device can accumulate many readings over time — a single embedded field couldn't represent that, and Go doesn't allow assigning directly to a struct field nested inside a map value. Keying both maps by the same device ID keeps the relationship simple while avoiding that limitation.
+Devices are stored as `map[string]Device`, and readings are stored separately as `map[string][]Reading`, both keyed by device ID. Readings are not embedded directly inside `Device` because a device can accumulate many readings over time, a single embedded field couldn't represent that, and Go doesn't allow assigning directly to a struct field nested inside a map value. Keying both maps by the same device ID keeps the relationship simple while avoiding that limitation.
 
 ### Timestamp representation
 
