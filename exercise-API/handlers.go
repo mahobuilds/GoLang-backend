@@ -74,8 +74,8 @@ func getWorkout(store *Store) http.HandlerFunc {
 
 func deleteWorkout(store *Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		store.mx.RLock()
-		defer store.mx.RUnlock()
+		store.mx.Lock()
+		defer store.mx.Unlock()
 
 		id := r.PathValue("id")
 
@@ -87,7 +87,7 @@ func deleteWorkout(store *Store) http.HandlerFunc {
 		}
 
 		delete(store.workouts, id)
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusNoContent)
 		fmt.Fprintln(w, "Workout deleted successfully")
 	}
 }
