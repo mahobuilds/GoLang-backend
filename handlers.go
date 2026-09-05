@@ -222,7 +222,6 @@ func getDeviceStats(store *Store) http.HandlerFunc {
 		min, max, avg, ok := computeStats(totalReadings)
 		if !ok {
 			w.WriteHeader(http.StatusNoContent)
-			fmt.Fprintln(w, "no readings in given range")
 			return
 		}
 
