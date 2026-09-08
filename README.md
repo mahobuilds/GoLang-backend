@@ -50,6 +50,10 @@ This file contains the function to calculate the status of a device's readings.
 
 This file contains the Store structre, which has all current data structures connected under it for connectivity purposes
 
+### 6. errors.go 
+
+Added this file for explicit error handling. Usages like errors.Is and errors.As. It gives the user to do error type checking against specific errors, or retrieve information about an error from the error chain.
+
 ## Design Decisions
 
 ### Empty readings on stats
