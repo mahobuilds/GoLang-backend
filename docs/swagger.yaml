@@ -1,0 +1,308 @@
+basePath: /
+definitions:
+  main.Device:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  main.DevicePatch:
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  main.Reading:
+    properties:
+      timestamp:
+        type: number
+      value:
+        type: number
+    type: object
+  main.StatsResponse:
+    properties:
+      avg:
+        type: number
+      max:
+        type: number
+      min:
+        type: number
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: A REST API for managing IoT devices and their readings
+  title: IoT Device API
+  version: "1.0"
+paths:
+  /devices:
+    get:
+      description: Get all devices stored
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.Device'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Get all devices
+      tags:
+      - devices
+    post:
+      consumes:
+      - application/json
+      description: Create a new deivce and save its parameters
+      parameters:
+      - description: Device to create
+        in: body
+        name: device
+        required: true
+        schema:
+          $ref: '#/definitions/main.Device'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Device'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "409":
+          description: Conflict
+          schema:
+            type: string
+      summary: Create a new IoT device
+      tags:
+      - devices
+  /devices/{id}:
+    delete:
+      description: Delete a device and its readings
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      tags:
+      - devices
+    get:
+      description: Get a single device by its ID
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Device'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Get a device
+      tags:
+      - devices
+    patch:
+      consumes:
+      - application/json
+      description: Update the data of an already existing device
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Data to be updated
+        in: body
+        name: devicePatch
+        required: true
+        schema:
+          $ref: '#/definitions/main.DevicePatch'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: Object
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: stirng
+      summary: Update device data
+      tags:
+      - devices
+    put:
+      consumes:
+      - application/json
+      description: If the device exists, replace it with the new one. If not, create
+        a new device
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Device to be replaced
+        in: body
+        name: device
+        required: true
+        schema:
+          $ref: '#/definitions/main.Device'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Device'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Replace a device
+      tags:
+      - devices
+  /devices/{id}/reading/stats:
+    get:
+      description: Calculate the minimum, maximum, and average values for a device's
+        readings
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Start timestamp
+        in: query
+        name: from
+        type: number
+      - description: End timestamp
+        in: query
+        name: to
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.StatsResponse'
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Get a device's statistics
+      tags:
+      - stats
+  /devices/{id}/readings:
+    get:
+      description: Get a device's readings by its given id
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Start timestamp
+        in: query
+        name: from
+        type: number
+      - description: End timestamp
+        in: query
+        name: to
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Reading'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Get a device's reading
+      tags:
+      - readings
+    post:
+      consumes:
+      - application/json
+      description: Create a new device reading and store it
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Reading to be added
+        in: body
+        name: reading
+        required: true
+        schema:
+          $ref: '#/definitions/main.Reading'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Reading'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      summary: Add a device reading
+      tags:
+      - readings
+swagger: "2.0"

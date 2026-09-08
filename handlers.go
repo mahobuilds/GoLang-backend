@@ -8,6 +8,12 @@ import (
 	"strconv"
 )
 
+type StatsResponse struct {
+	Min     float64 `json:"min"`
+	Max     float64 `json:"max"`
+	Average float64 `json:"avg"`
+}
+
 type deviceGetter interface {
 	GetDevice(id string) (Device, bool)
 }
@@ -40,6 +46,17 @@ type deviceDeleter interface {
 	DeleteDevice(id string) bool
 }
 
+// creatDeviceHandler godoc
+// @Summary Create a new IoT device
+// @Description Create a new deivce and save its parameters
+// @Tags devices
+// @Accept json
+// @Produce json
+// @Param device body Device true "Device to create"
+// @Success 200 {object} Device
+// @Failure 400 {string} string
+// @Failure 409 {string} string
+// @Router /devices [post]
 func createDeviceHandler(store deviceCreator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -68,6 +85,18 @@ func createDeviceHandler(store deviceCreator) http.HandlerFunc {
 	}
 }
 
+// createDeviceReading godoc
+// @Summary Add a device reading
+// @Description Create a new device reading and store it
+// @Tags readings
+// @Accept json
+// @Produce json
+// @Param id path string true "Device ID"
+// @Param reading body Reading true "Reading to be added"
+// @Success 200 {object} Reading
+// @Failure 400 {string} string
+// @Failure 404 {string} string
+// @Router /devices/{id}/readings [post]
 func createDeviceReading(store deviceReadingCreator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -93,13 +122,25 @@ func createDeviceReading(store deviceReadingCreator) http.HandlerFunc {
 
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with ID: %s couldn't be found", id)
+			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
 			return
 		}
 		json.NewEncoder(w).Encode(reading)
 	}
 }
 
+// getDeviceReading godoc
+// @Summary Get a device's reading
+// @Description Get a device's readings by its given id
+// @Tags readings
+// @Produce json
+// @Param id path string true "Device ID"
+// @Param from query number false "Start timestamp"
+// @Param to query number false "End timestamp"
+// @Success 200 {object} Reading
+// @Failure 404 {string} string
+// @Failure 400 {string} string
+// @Router /devices/{id}/readings [get]
 func getDeviceReading(store readingGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -150,6 +191,14 @@ func getDeviceReading(store readingGetter) http.HandlerFunc {
 	}
 }
 
+// getAllDevices
+// @Summary Get all devices
+// @Description Get all devices stored
+// @Tags devices
+// @Produce json
+// @Success 200 {array} Device
+// @Failure 404 {string} string
+// @Router /devices [get]
 func getAllDevices(store allDevicesGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var allDevices []Device
@@ -161,6 +210,15 @@ func getAllDevices(store allDevicesGetter) http.HandlerFunc {
 	}
 }
 
+// getDeviceData godoc
+// @Summary Get a device
+// @Description Get a single device by its ID
+// @Tags devices
+// @Produce json
+// @Param id path string true "Device ID"
+// @Success 200 {object} Device
+// @Failure 404 {string} string
+// @Router /devices/{id} [get]
 func getDeviceData(store deviceGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -178,6 +236,19 @@ func getDeviceData(store deviceGetter) http.HandlerFunc {
 	}
 }
 
+// getDeviceStats godoc
+// @Summary Get a device's statistics
+// @Description Calculate the minimum, maximum, and average values for a device's readings
+// @Tags stats
+// @Produce json
+// @Param id path string true "Device ID"
+// @Param from query number false "Start timestamp"
+// @Param to query number false "End timestamp"
+// @Success 200 {object} StatsResponse
+// @Failure 404 {string} string
+// @Failure 400 {string} string
+// @Failure 204 {string} string
+// @Router /devices/{id}/reading/stats [get]
 func getDeviceStats(store readingGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -220,12 +291,6 @@ func getDeviceStats(store readingGetter) http.HandlerFunc {
 			}
 		}
 
-		type Response struct {
-			Min     float64 `json:"min"`
-			Max     float64 `json:"max"`
-			Average float64 `json:"avg"`
-		}
-
 		var totalReadings []Reading
 		if from > to {
 			w.WriteHeader(http.StatusBadRequest)
@@ -243,11 +308,23 @@ func getDeviceStats(store readingGetter) http.HandlerFunc {
 			return
 		}
 
-		response := Response{Min: min, Max: max, Average: avg}
+		response := StatsResponse{Min: min, Max: max, Average: avg}
 		json.NewEncoder(w).Encode(response)
 	}
 }
 
+// replaceDevice godoc
+// @Summary Replace a device
+// @Description If the device exists, replace it with the new one. If not, create a new device
+// @Tags devices
+// @Accept json
+// @Produce json
+// @Param id path string true "Device ID"
+// @Param device body Device true "Device to be replaced"
+// @Success 200 {object} Device
+// @Failure 400 {string} string
+// @Failure 404 {string} string
+// @Router /devices/{id} [PUT]
 func replaceDevice(store deviceReplacer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -272,6 +349,18 @@ func replaceDevice(store deviceReplacer) http.HandlerFunc {
 	}
 }
 
+// updateDeviceData godoc
+// @Summary Update device data
+// @Description Update the data of an already existing device
+// @Tags devices
+// @Accept json
+// @Produce json
+// @Param id path string true "Device ID"
+// @Param devicePatch body DevicePatch true "Data to be updated"
+// @Success 200 {Object} Device
+// @Failure 400 {string} string
+// @Failure 404 {stirng} string
+// @Router /devices/{id} [PATCH]
 func updateDeviceData(store deviceUpdater) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -303,6 +392,14 @@ func updateDeviceData(store deviceUpdater) http.HandlerFunc {
 	}
 }
 
+// deleteDevice godoc
+// @Summary Delete a device
+// @Description Delete a device and its readings
+// @Tags devices
+// @Param id path string true "Device ID"
+// @Success 200
+// @Failure 404 {string} string
+// @Router /devices/{id} [DELETE]
 func deleteDevice(store deviceDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -313,7 +410,7 @@ func deleteDevice(store deviceDeleter) http.HandlerFunc {
 			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
 			return
 		}
-		
+
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "request succeeded")
 	}

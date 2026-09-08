@@ -1,6 +1,19 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+
+	_ "iotmer-case/docs"
+
+	httpSwagger "github.com/swaggo/http-swagger"
+)
+
+// @title IoT Device API
+// @version 1.0
+// @description A REST API for managing IoT devices and their readings
+
+// @host localhost:8080
+// @BasePath /
 
 func main() {
 
@@ -23,6 +36,8 @@ func main() {
 	http.HandleFunc("PATCH /devices/{id}", updateDeviceData(store))
 
 	http.HandleFunc("DELETE /devices/{id}", deleteDevice(store))
+
+	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
 	http.ListenAndServe(":8080", nil)
 }
