@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -15,7 +16,7 @@ type StatsResponse struct {
 }
 
 type deviceGetter interface {
-	GetDevice(id string) (Device, bool)
+	GetDevice(id string) (Device, error)
 }
 
 type allDevicesGetter interface {
@@ -77,8 +78,13 @@ func createDeviceHandler(store deviceCreator) http.HandlerFunc {
 
 		err = store.CreateDevice(d)
 		if err != nil {
-			w.WriteHeader(http.StatusConflict)
-			fmt.Fprintf(w, "deivce with id: %s already exists", d.ID)
+			if errors.Is(err, ErrDeviceExists) {
+				w.WriteHeader(http.StatusConflict)
+				fmt.Fprintf(w, "device with id: %s already exists", d.ID)
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 		json.NewEncoder(w).Encode(d)
@@ -121,8 +127,14 @@ func createDeviceReading(store deviceReadingCreator) http.HandlerFunc {
 		err = store.CreateDeviceReading(id, reading)
 
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+			var notFoundErr *DeviceNotFoundError
+			if errors.As(err, &notFoundErr) {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Device with ID: %s does not exist", notFoundErr.ID)
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 		json.NewEncoder(w).Encode(reading)
@@ -224,10 +236,16 @@ func getDeviceData(store deviceGetter) http.HandlerFunc {
 
 		id := r.PathValue("id")
 
-		device, exists := store.GetDevice(id)
-		if !exists {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+		device, err := store.GetDevice(id)
+		if err != nil {
+			var notFoundErr *DeviceNotFoundError
+			if errors.As(err, &notFoundErr) {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Device with ID: %s does not exist", notFoundErr.ID)
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 

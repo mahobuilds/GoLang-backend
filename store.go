@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -11,12 +11,18 @@ type Store struct {
 	mx       sync.RWMutex
 }
 
-func (store *Store) GetDevice(id string) (Device, bool) {
+func (store *Store) GetDevice(id string) (Device, error) {
 	store.mx.RLock()
 	defer store.mx.RUnlock()
 
 	device, exists := store.devices[id]
-	return device, exists
+	if !exists {
+		return Device{}, &DeviceNotFoundError{
+			ID: id,
+		}
+	}
+
+	return device, nil
 }
 
 func (store *Store) GetDevices() map[string]Device {
@@ -45,7 +51,7 @@ func (store *Store) CreateDevice(device Device) error {
 
 	_, exists := store.devices[device.ID]
 	if exists {
-		return errors.New("device already exists")
+		return fmt.Errorf("creating device %s: %w", device.ID, ErrDeviceExists)
 	}
 
 	store.devices[device.ID] = device
@@ -58,7 +64,7 @@ func (store *Store) CreateDeviceReading(id string, reading Reading) error {
 
 	_, exists := store.devices[id]
 	if !exists {
-		return errors.New("device does not exist")
+		return &DeviceNotFoundError{ID : id}
 	}
 
 	store.readings[id] = append(store.readings[id], reading)
