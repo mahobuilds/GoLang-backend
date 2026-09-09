@@ -1,6 +1,6 @@
 # IoT Device Telemetry Service
 
-A simple in-memory REST API built in Go, using only the standard library (`net/http`), for collecting and querying sensor device readings.
+A simple in-memory REST API built in Go, using various relative libraries, for collecting and querying sensor device readings.
 
 ## Purpose
 
@@ -38,7 +38,7 @@ This is our main file. It is responsible for the starting of the server and simp
 
 This file is reposnible for the handlers.
 
-### 3. modles.go
+### 3. models.go
 
 This file is responsible for the data structres.
 
@@ -49,6 +49,10 @@ This file contains the function to calculate the status of a device's readings.
 ### 5. store.go
 
 This file contains the Store structre, which has all current data structures connected under it for connectivity purposes
+
+### 6. errors.go
+
+Contains sentinel error values for better error checking
 
 ## Design Decisions
 
@@ -73,10 +77,9 @@ The service uses a single shared `sync.RWMutex`, declared once and shared across
 - **400 Bad Request** malformed JSON, or a value that fails to parse (e.g. an invalid `from`/`to` query parameter)
 - **404 Not Found** a requested device or its readings don't exist, or a device exists but has no readings for `/stats`
 - **409 Conflict** attempting to create a device with an ID that already exists
+- **500 Server Error** an unknown error that is yet to be defined by the system
 
 ## Dependencies
-
-Only Go's standard library is used, no third-party frameworks:
 
 - `encoding/json` decoding incoming requests and encoding outgoing responses
 - `fmt` writing response/error messages
@@ -84,3 +87,4 @@ Only Go's standard library is used, no third-party frameworks:
 - `sync` read/write locking for concurrency safety (see above)
 - `strconv` converting query parameter strings to `float64`
 - `math` providing `math.MaxFloat64` as the default upper bound when no `to` parameter is given
+- `errors` used to classify errors and give them more context
