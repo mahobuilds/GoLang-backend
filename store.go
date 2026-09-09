@@ -1,9 +1,6 @@
 package main
 
-import (
-	"errors"
-	"sync"
-)
+import "sync"
 
 type Store struct {
 	devices  map[string]Device
@@ -11,12 +8,16 @@ type Store struct {
 	mx       sync.RWMutex
 }
 
-func (store *Store) GetDevice(id string) (Device, bool) {
+func (store *Store) GetDevice(id string) (Device, error) {
 	store.mx.RLock()
 	defer store.mx.RUnlock()
 
 	device, exists := store.devices[id]
-	return device, exists
+	if !exists {
+		return  Device{}, ErrNoDevice
+	}
+
+	return device, nil
 }
 
 func (store *Store) GetDevices() map[string]Device {
@@ -31,12 +32,16 @@ func (store *Store) GetDevices() map[string]Device {
 	return devices
 }
 
-func (store *Store) GetReadings(id string) ([]Reading, bool) {
+func (store *Store) GetReadings(id string) ([]Reading, error) {
 	store.mx.RLock()
 	defer store.mx.RUnlock()
 
 	readings, exists := store.readings[id]
-	return readings, exists
+	if !exists {
+		return []Reading{}, ErrNoDevice
+	}
+
+	return readings, nil
 }
 
 func (store *Store) CreateDevice(device Device) error {
@@ -45,7 +50,7 @@ func (store *Store) CreateDevice(device Device) error {
 
 	_, exists := store.devices[device.ID]
 	if exists {
-		return errors.New("device already exists")
+		return ErrDeviceExists
 	}
 
 	store.devices[device.ID] = device
@@ -58,7 +63,7 @@ func (store *Store) CreateDeviceReading(id string, reading Reading) error {
 
 	_, exists := store.devices[id]
 	if !exists {
-		return errors.New("device does not exist")
+		return ErrNoDevice
 	}
 
 	store.readings[id] = append(store.readings[id], reading)
@@ -85,13 +90,13 @@ func (store *Store) ReplaceDevice(device Device) {
 	
 }
 
-func (store *Store) UpdateDevice(id string, patch DevicePatch) (Device, bool) {
+func (store *Store) UpdateDevice(id string, patch DevicePatch) (Device, error) {
 	store.mx.Lock()
 	defer store.mx.Unlock()
 
 	device, exists := store.devices[id]
 	if !exists {
-		return Device{}, false
+		return Device{}, ErrNoDevice
 	}
 
 	if patch.Name != nil {
@@ -102,21 +107,21 @@ func (store *Store) UpdateDevice(id string, patch DevicePatch) (Device, bool) {
 	}
 
 	store.devices[device.ID] = device
-	return device, true
+	return device, nil
 }
 
-func (store *Store) DeleteDevice(id string) bool {
+func (store *Store) DeleteDevice(id string) error {
 	store.mx.Lock()
 	defer store.mx.Unlock()
 	
 	_, exists := store.devices[id]
 	if !exists {
-		return false
+		return ErrNoDevice
 	}
 
 	delete(store.devices, id)
 	delete(store.readings, id)
-	return true
+	return nil
 }
 
 func NewStore() *Store {

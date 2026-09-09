@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -15,7 +16,7 @@ type StatsResponse struct {
 }
 
 type deviceGetter interface {
-	GetDevice(id string) (Device, bool)
+	GetDevice(id string) (Device, error)
 }
 
 type allDevicesGetter interface {
@@ -23,7 +24,7 @@ type allDevicesGetter interface {
 }
 
 type readingGetter interface {
-	GetReadings(id string) ([]Reading, bool)
+	GetReadings(id string) ([]Reading, error)
 }
 
 type deviceCreator interface {
@@ -39,11 +40,11 @@ type deviceReplacer interface {
 }
 
 type deviceUpdater interface {
-	UpdateDevice(id string, patch DevicePatch) (Device, bool)
+	UpdateDevice(id string, patch DevicePatch) (Device, error)
 }
 
 type deviceDeleter interface {
-	DeleteDevice(id string) bool
+	DeleteDevice(id string) error
 }
 
 // creatDeviceHandler godoc
@@ -77,8 +78,14 @@ func createDeviceHandler(store deviceCreator) http.HandlerFunc {
 
 		err = store.CreateDevice(d)
 		if err != nil {
-			w.WriteHeader(http.StatusConflict)
-			fmt.Fprintf(w, "deivce with id: %s already exists", d.ID)
+			if errors.Is(err, ErrDeviceExists) {
+				w.WriteHeader(http.StatusConflict)
+				fmt.Fprintf(w, "deivce with id: %s already exists", d.ID)
+				return
+			}
+
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 		json.NewEncoder(w).Encode(d)
@@ -121,8 +128,14 @@ func createDeviceReading(store deviceReadingCreator) http.HandlerFunc {
 		err = store.CreateDeviceReading(id, reading)
 
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+			if errors.Is(err, ErrNoDevice) {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+				return
+			}
+
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 		json.NewEncoder(w).Encode(reading)
@@ -145,11 +158,17 @@ func getDeviceReading(store readingGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		id := r.PathValue("id")
-		readings, exists := store.GetReadings(id)
+		readings, err := store.GetReadings(id)
 
-		if !exists {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with ID: %s not found!", id)
+		if err != nil {
+			if errors.Is(err, ErrNoDevice) {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Device with ID: %s not found!", id)
+				return
+			}
+
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 
@@ -224,15 +243,20 @@ func getDeviceData(store deviceGetter) http.HandlerFunc {
 
 		id := r.PathValue("id")
 
-		device, exists := store.GetDevice(id)
-		if !exists {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+		device, err := store.GetDevice(id)
+		if err != nil {
+			if errors.Is(err, ErrNoDevice) {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+				return
+			}
+
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 
 		json.NewEncoder(w).Encode(device)
-
 	}
 }
 
@@ -253,10 +277,16 @@ func getDeviceStats(store readingGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		id := r.PathValue("id")
-		readings, exists := store.GetReadings(id)
-		if !exists {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with ID: %s was not found!", id)
+		readings, err := store.GetReadings(id)
+		if err != nil {
+			if errors.Is(err, ErrNoDevice) {
+				w.WriteHeader(http.StatusConflict)
+				fmt.Fprintf(w, "Device with ID: %s deos not exist", id)
+				return
+			}
+
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 
@@ -271,7 +301,6 @@ func getDeviceStats(store readingGetter) http.HandlerFunc {
 
 		from := 0.0
 		to := math.MaxFloat64
-		var err error
 
 		if strFrom != "" {
 			from, err = strconv.ParseFloat(strFrom, 64)
@@ -382,10 +411,16 @@ func updateDeviceData(store deviceUpdater) http.HandlerFunc {
 			return
 		}
 
-		device, exists := store.UpdateDevice(id, patch)
-		if !exists {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with id: %s does not exist", id)
+		device, err := store.UpdateDevice(id, patch)
+		if err != nil {
+			if errors.Is(err, ErrNoDevice) {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Device with id: %s does not exist", id)
+				return
+			}
+
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 		json.NewEncoder(w).Encode(device)
@@ -405,9 +440,15 @@ func deleteDevice(store deviceDeleter) http.HandlerFunc {
 		id := r.PathValue("id")
 
 		deleted := store.DeleteDevice(id)
-		if !deleted {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+		if deleted != nil {
+			if errors.Is(deleted, ErrNoDevice) {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+				return
+			}
+
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "internal server error")
 			return
 		}
 
