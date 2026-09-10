@@ -63,29 +63,41 @@ func createDeviceHandler(store deviceCreator) http.HandlerFunc {
 
 		contentType := r.Header.Get("Content-Type")
 		if contentType != "application/json" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "Mismatch of content type")
+			writeError(
+				w,
+				http.StatusBadRequest,
+				"mismatch of content type",
+			)
 			return
 		}
 
 		var d Device
 		err := json.NewDecoder(r.Body).Decode(&d)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "bad server request: ", err)
+			writeError(
+				w,
+				http.StatusBadRequest,
+				"bad request",
+			)
 			return
 		}
 
 		err = store.CreateDevice(d)
 		if err != nil {
 			if errors.Is(err, ErrDeviceExists) {
-				w.WriteHeader(http.StatusConflict)
-				fmt.Fprintf(w, "deivce with id: %s already exists", d.ID)
+				writeError(
+					w,
+					http.StatusConflict,
+					fmt.Sprintf("device with ID: %s already exists", d.ID),
+				)
 				return
 			}
 
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintln(w, "internal server error")
+			writeError(
+				w,
+				http.StatusInternalServerError,
+				"internal server error",
+			)
 			return
 		}
 		json.NewEncoder(w).Encode(d)
@@ -109,8 +121,11 @@ func createDeviceReading(store deviceReadingCreator) http.HandlerFunc {
 
 		contentType := r.Header.Get("Content-Type")
 		if contentType != "application/json" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "Mismatch of content type")
+			writeError(
+				w,
+				http.StatusBadRequest,
+				"mismatch of content type",
+			)
 			return
 		}
 
@@ -119,8 +134,11 @@ func createDeviceReading(store deviceReadingCreator) http.HandlerFunc {
 		err := json.NewDecoder(r.Body).Decode(&reading)
 
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "bad request:", err)
+			writeError(
+				w,
+				http.StatusBadRequest,
+				"bad request",
+			)
 			return
 		}
 
@@ -129,13 +147,19 @@ func createDeviceReading(store deviceReadingCreator) http.HandlerFunc {
 
 		if err != nil {
 			if errors.Is(err, ErrNoDevice) {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+				writeError(
+					w,
+					http.StatusNotFound,
+					fmt.Sprintf("device with ID: %s does not exist", id),
+				)
 				return
 			}
 
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintln(w, "internal server error")
+			writeError(
+				w,
+				http.StatusInternalServerError,
+				"internal server error",
+			)
 			return
 		}
 		json.NewEncoder(w).Encode(reading)
@@ -162,13 +186,19 @@ func getDeviceReading(store readingGetter) http.HandlerFunc {
 
 		if err != nil {
 			if errors.Is(err, ErrNoDevice) {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "Device with ID: %s not found!", id)
+				writeError(
+					w,
+					http.StatusNotFound,
+					fmt.Sprintf("device with ID: %s does not exist", id),
+				)
 				return
 			}
 
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintln(w, "internal server error")
+			writeError(
+				w,
+				http.StatusInternalServerError,
+				"internal server error",
+			)
 			return
 		}
 
@@ -182,8 +212,11 @@ func getDeviceReading(store readingGetter) http.HandlerFunc {
 		if strFrom != "" {
 			from, ok = strconv.ParseFloat(strFrom, 64)
 			if ok != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				fmt.Fprintln(w, "bad request: ")
+				writeError(
+					w,
+					http.StatusBadRequest,
+					"bad request",
+				)
 				return
 			}
 		}
@@ -191,8 +224,11 @@ func getDeviceReading(store readingGetter) http.HandlerFunc {
 		if strTo != "" {
 			to, ok = strconv.ParseFloat(strTo, 64)
 			if ok != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				fmt.Fprintln(w, "bad request: ")
+				writeError(
+					w,
+					http.StatusBadRequest,
+					"bad request",
+				)
 				return
 			}
 		}
@@ -246,13 +282,19 @@ func getDeviceData(store deviceGetter) http.HandlerFunc {
 		device, err := store.GetDevice(id)
 		if err != nil {
 			if errors.Is(err, ErrNoDevice) {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+				writeError(
+					w,
+					http.StatusNotFound,
+					fmt.Sprintf("device with ID: %s does not exist", id),
+				)
 				return
 			}
 
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintln(w, "internal server error")
+			writeError(
+				w,
+				http.StatusInternalServerError,
+				"internal server error",
+			)
 			return
 		}
 
@@ -280,19 +322,28 @@ func getDeviceStats(store readingGetter) http.HandlerFunc {
 		readings, err := store.GetReadings(id)
 		if err != nil {
 			if errors.Is(err, ErrNoDevice) {
-				w.WriteHeader(http.StatusConflict)
-				fmt.Fprintf(w, "Device with ID: %s deos not exist", id)
+				writeError(
+					w,
+					http.StatusNotFound,
+					fmt.Sprintf("device with ID: %s does not exist", id),
+				)
 				return
 			}
 
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintln(w, "internal server error")
+			writeError(
+				w,
+				http.StatusInternalServerError,
+				"internal server error",
+			)
 			return
 		}
 
 		if len(readings) == 0 {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Device with ID: %s has no readings!", id)
+			writeError(
+				w,
+				http.StatusNotFound,
+				fmt.Sprintf("device with ID: %s has no readings", id),
+			)
 			return
 		}
 
@@ -305,8 +356,11 @@ func getDeviceStats(store readingGetter) http.HandlerFunc {
 		if strFrom != "" {
 			from, err = strconv.ParseFloat(strFrom, 64)
 			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				fmt.Fprintln(w, "bad request", err)
+				writeError(
+					w,
+					http.StatusBadRequest,
+					"bad request",
+				)
 				return
 			}
 		}
@@ -314,16 +368,22 @@ func getDeviceStats(store readingGetter) http.HandlerFunc {
 		if strTo != "" {
 			to, err = strconv.ParseFloat(strTo, 64)
 			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				fmt.Fprintln(w, "bad request:", err)
+				writeError(
+					w,
+					http.StatusBadRequest,
+					"bad request",
+				)
 				return
 			}
 		}
 
 		var totalReadings []Reading
 		if from > to {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "invalid ranges")
+			writeError(
+				w,
+				http.StatusBadRequest,
+				"invalid ranges",
+			)
 			return
 		}
 		for _, reading := range readings {
@@ -359,8 +419,11 @@ func replaceDevice(store deviceReplacer) http.HandlerFunc {
 
 		contentType := r.Header.Get("Content-Type")
 		if contentType != "application/json" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "Mismatch of content type")
+			writeError(
+				w,
+				http.StatusBadRequest,
+				"mismatch of content type",
+			)
 			return
 		}
 
@@ -368,8 +431,11 @@ func replaceDevice(store deviceReplacer) http.HandlerFunc {
 
 		err := json.NewDecoder(r.Body).Decode(&d)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "bad request:", err)
+			writeError(
+				w,
+				http.StatusBadRequest,
+				"bad request",
+			)
 			return
 		}
 
@@ -397,8 +463,11 @@ func updateDeviceData(store deviceUpdater) http.HandlerFunc {
 
 		contentType := r.Header.Get("Content-Type")
 		if contentType != "application/json" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "Mismatch of content type")
+			writeError(
+				w,
+				http.StatusBadRequest,
+				"mismatch of content type",
+			)
 			return
 		}
 
@@ -406,21 +475,30 @@ func updateDeviceData(store deviceUpdater) http.HandlerFunc {
 
 		err := json.NewDecoder(r.Body).Decode(&patch)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "bad request:", err)
+			writeError(
+				w,
+				http.StatusBadRequest,
+				"bad request",
+			)
 			return
 		}
 
 		device, err := store.UpdateDevice(id, patch)
 		if err != nil {
 			if errors.Is(err, ErrNoDevice) {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "Device with id: %s does not exist", id)
+				writeError(
+					w,
+					http.StatusNotFound,
+					fmt.Sprintf("device with ID: %s does not exist", id),
+				)
 				return
 			}
 
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintln(w, "internal server error")
+			writeError(
+				w,
+				http.StatusInternalServerError,
+				"internal server error",
+			)
 			return
 		}
 		json.NewEncoder(w).Encode(device)
@@ -442,13 +520,19 @@ func deleteDevice(store deviceDeleter) http.HandlerFunc {
 		deleted := store.DeleteDevice(id)
 		if deleted != nil {
 			if errors.Is(deleted, ErrNoDevice) {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "Device with ID: %s does not exist", id)
+				writeError(
+					w,
+					http.StatusNotFound,
+					fmt.Sprintf("device with ID: %s does not exist", id),
+				)
 				return
 			}
 
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintln(w, "internal server error")
+			writeError(
+				w,
+				http.StatusInternalServerError,
+				"internal server error",
+			)
 			return
 		}
 
