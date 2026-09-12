@@ -178,6 +178,7 @@ const docTemplate = `{
                 "tags": [
                     "devices"
                 ],
+                "summary": "Delete a device",
                 "parameters": [
                     {
                         "type": "string",

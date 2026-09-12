@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"context"
 )
 
 type StatsResponse struct {
@@ -16,7 +17,7 @@ type StatsResponse struct {
 }
 
 type deviceGetter interface {
-	GetDevice(id string) (Device, error)
+	GetDevice(ctx context.Context, id string) (Device, error)
 }
 
 type allDevicesGetter interface {
@@ -265,7 +266,7 @@ func getAllDevices(store allDevicesGetter) http.HandlerFunc {
 	}
 }
 
-// getDeviceData godoc
+// getDevice godoc
 // @Summary Get a device
 // @Description Get a single device by its ID
 // @Tags devices
@@ -274,12 +275,13 @@ func getAllDevices(store allDevicesGetter) http.HandlerFunc {
 // @Success 200 {object} Device
 // @Failure 404 {string} string
 // @Router /devices/{id} [get]
-func getDeviceData(store deviceGetter) http.HandlerFunc {
+func getDevice(store deviceGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		id := r.PathValue("id")
 
-		device, err := store.GetDevice(id)
+		device, err := store.GetDevice(ctx, id)
 		if err != nil {
 			if errors.Is(err, ErrNoDevice) {
 				writeError(

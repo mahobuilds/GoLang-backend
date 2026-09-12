@@ -1,6 +1,9 @@
 package main
 
-import "sync"
+import (
+	"sync"
+	"context"
+)
 
 type Store struct {
 	devices  map[string]Device
@@ -8,7 +11,13 @@ type Store struct {
 	mx       sync.RWMutex
 }
 
-func (store *Store) GetDevice(id string) (Device, error) {
+func (store *Store) GetDevice(ctx context.Context, id string) (Device, error) {
+	select {
+	case <- ctx.Done():
+		return Device{}, ctx.Err()
+	default:
+	}
+
 	store.mx.RLock()
 	defer store.mx.RUnlock()
 

@@ -103,6 +103,7 @@ paths:
           description: Not Found
           schema:
             type: string
+      summary: Delete a device
       tags:
       - devices
     get:

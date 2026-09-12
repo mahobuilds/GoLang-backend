@@ -25,7 +25,7 @@ func main() {
 
 	http.HandleFunc("GET /devices", getAllDevices(store))
 
-	http.HandleFunc("GET /devices/{id}", getDeviceData(store))
+	http.HandleFunc("GET /devices/{id}", getDevice(store))
 
 	http.HandleFunc("GET /devices/{id}/readings", getDeviceReading(store))
 
