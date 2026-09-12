@@ -17,7 +17,7 @@ func (store *Store) GetDevice(ctx context.Context, id string) (Device, error) {
 		return Device{}, ctx.Err()
 	default:
 	}
-
+	
 	store.mx.RLock()
 	defer store.mx.RUnlock()
 

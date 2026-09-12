@@ -1,7 +1,14 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	_ "iotmer-case/docs"
 
@@ -19,25 +26,62 @@ func main() {
 
 	store := NewStore()
 
-	http.HandleFunc("POST /devices", createDeviceHandler(store))
+	mux := http.NewServeMux()
 
-	http.HandleFunc("POST /devices/{id}/readings", createDeviceReading(store))
+	mux.HandleFunc("POST /devices", createDeviceHandler(store))
 
-	http.HandleFunc("GET /devices", getAllDevices(store))
+	mux.HandleFunc("POST /devices/{id}/readings", createDeviceReading(store))
 
-	http.HandleFunc("GET /devices/{id}", getDevice(store))
+	mux.HandleFunc("GET /devices", getAllDevices(store))
 
-	http.HandleFunc("GET /devices/{id}/readings", getDeviceReading(store))
+	mux.HandleFunc("GET /devices/{id}", getDevice(store))
 
-	http.HandleFunc("GET /devices/{id}/stats", getDeviceStats(store))
+	mux.HandleFunc("GET /devices/{id}/readings", getDeviceReading(store))
 
-	http.HandleFunc("PUT /devices/{id}", replaceDevice(store))
+	mux.HandleFunc("GET /devices/{id}/stats", getDeviceStats(store))
 
-	http.HandleFunc("PATCH /devices/{id}", updateDeviceData(store))
+	mux.HandleFunc("PUT /devices/{id}", replaceDevice(store))
 
-	http.HandleFunc("DELETE /devices/{id}", deleteDevice(store))
+	mux.HandleFunc("PATCH /devices/{id}", updateDeviceData(store))
 
-	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+	mux.HandleFunc("DELETE /devices/{id}", deleteDevice(store))
 
-	http.ListenAndServe(":8080", nil)
+	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: mux,
+	}
+
+	signalCtx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+	defer stop()
+
+	go func() {
+		fmt.Println("Server running on: 8080")
+
+		if err := server.ListenAndServe(); err != nil &&
+			err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+
+	<-signalCtx.Done()
+
+	fmt.Println("Starting graceful shutdown...")
+
+	shutdownCtx, cancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatal("Server forced to shutdown:", err)
+	}
+
+	fmt.Println("Server stopped successfully")
 }
